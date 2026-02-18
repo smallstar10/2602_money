@@ -1,0 +1,4 @@
+# Optional providers (MVP fallback)
+# Install only when DATA_PROVIDER=fdr_daily or pykrx_daily is used
+FinanceDataReader @ git+https://github.com/FinanceData/FinanceDataReader.git
+pykrx>=1.0.48

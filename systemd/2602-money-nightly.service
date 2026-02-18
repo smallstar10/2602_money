@@ -1,0 +1,11 @@
+[Unit]
+Description=2602_money nightly feedback
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/2602_money
+Environment=PYTHONUNBUFFERED=1
+ExecStart=%h/2602_money/.venv/bin/python %h/2602_money/src/jobs/run_nightly.py
+StandardOutput=journal
+StandardError=journal

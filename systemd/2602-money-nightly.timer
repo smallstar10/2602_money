@@ -1,0 +1,10 @@
+[Unit]
+Description=Run 2602_money nightly feedback
+
+[Timer]
+OnCalendar=*-*-* 18:00:00 Asia/Seoul
+Persistent=true
+Unit=2602-money-nightly.service
+
+[Install]
+WantedBy=timers.target

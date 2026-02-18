@@ -1,0 +1,10 @@
+[Unit]
+Description=Run 2602_money watchdog every 10 minutes
+
+[Timer]
+OnCalendar=*:0/10
+Persistent=true
+Unit=2602-money-watchdog.service
+
+[Install]
+WantedBy=timers.target

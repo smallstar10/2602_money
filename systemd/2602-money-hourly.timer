@@ -1,0 +1,10 @@
+[Unit]
+Description=Run 2602_money hourly scanner
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 08..17:00:00
+Persistent=true
+Unit=2602-money-hourly.service
+
+[Install]
+WantedBy=timers.target
