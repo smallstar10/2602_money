@@ -61,6 +61,15 @@ systemctl --user enable --now 2602-money-backup.timer
 - `03:10` 일일 백업 (money/hotdeal/blog 핵심 파일)
 - `10분 간격` watchdog: money/hotdeal/blog 상태 점검 및 자동 재기동 시도
 
+## systemd 유닛 구성
+- `2602-money-hourly.timer/service`: 장중 스캔
+- `2602-money-nightly.timer/service`: 야간 성과/튜닝
+- `2602-money-watchdog.timer/service`: 상태 감시/자가복구
+- `2602-money-chatcmd.timer/service`: 텔레그램 명령 처리
+- `2602-money-morning.timer/service`: 08:30 브리핑(뉴스 10건 포함)
+- `2602-money-evening.timer/service`: 20:30 저녁 리포트
+- `2602-money-backup.timer/service`: 03:10 백업
+
 ## Provider 권장
 - 운영 안정성: KIS OpenAPI 권장
 - MVP/테스트: `fdr_daily`, `pykrx_daily` 가능 (스크래핑 변경 리스크 존재)
@@ -119,6 +128,13 @@ cd /home/hyeonbin/2602_money
 ```
 - `hourly`, `nightly`, `watchdog` 타이머를 모두 활성화합니다.
 - watchdog은 10분마다 상태를 점검하고 타이머/서비스가 멈추면 자동 재기동합니다.
+
+부팅 후 자동시작 확인:
+```bash
+loginctl show-user "$USER" -p Linger
+systemctl --user list-unit-files | grep 2602-money
+systemctl --user list-timers --all | grep 2602-money
+```
 
 ## 백업 복구
 ```bash
