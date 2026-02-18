@@ -42,7 +42,24 @@ cp systemd/* ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable --now 2602-money-hourly.timer
 systemctl --user enable --now 2602-money-nightly.timer
+systemctl --user enable --now 2602-money-watchdog.timer
+systemctl --user enable --now 2602-money-chatcmd.timer
+systemctl --user enable --now 2602-money-morning.timer
+systemctl --user enable --now 2602-money-evening.timer
+systemctl --user enable --now 2602-money-backup.timer
 ```
+
+## 텔레그램 명령어 (Money_2602_bot)
+- `/상태`: money/hotdeal/blog 통합 상태 대시보드
+- `/뉴스`: Tech + 주요 뉴스 10건(URL 포함)
+- `/최근`: 최근 스캔 후보 TOP 5
+- `/도움말`
+
+## 추가 자동화 스케줄
+- `08:30` 아침 브리핑: 통합 상태 + Tech/주요 뉴스 10건
+- `20:30` 저녁 통합 리포트
+- `03:10` 일일 백업 (money/hotdeal/blog 핵심 파일)
+- `10분 간격` watchdog: money/hotdeal/blog 상태 점검 및 자동 재기동 시도
 
 ## Provider 권장
 - 운영 안정성: KIS OpenAPI 권장
@@ -102,3 +119,9 @@ cd /home/hyeonbin/2602_money
 ```
 - `hourly`, `nightly`, `watchdog` 타이머를 모두 활성화합니다.
 - watchdog은 10분마다 상태를 점검하고 타이머/서비스가 멈추면 자동 재기동합니다.
+
+## 백업 복구
+```bash
+cd /home/hyeonbin/2602_money
+./scripts/restore_backup.sh data/backups/<backup-file>.tar.gz
+```

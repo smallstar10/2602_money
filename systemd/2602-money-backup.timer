@@ -1,0 +1,10 @@
+[Unit]
+Description=Run 2602_money daily backup at 03:10 KST
+
+[Timer]
+OnCalendar=*-*-* 03:10:00 Asia/Seoul
+Persistent=true
+Unit=2602-money-backup.service
+
+[Install]
+WantedBy=timers.target

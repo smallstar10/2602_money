@@ -7,3 +7,5 @@ __pycache__/
 # local runtime data
 /data/*.db
 /data/*.json
+/data/backups/
+*.tar.gz

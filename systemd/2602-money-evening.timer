@@ -1,0 +1,10 @@
+[Unit]
+Description=Run 2602_money evening integrated report at 20:30 KST
+
+[Timer]
+OnCalendar=*-*-* 20:30:00 Asia/Seoul
+Persistent=true
+Unit=2602-money-evening.service
+
+[Install]
+WantedBy=timers.target

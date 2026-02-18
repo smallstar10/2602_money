@@ -1,0 +1,10 @@
+[Unit]
+Description=Run 2602_money chat command poll every minute
+
+[Timer]
+OnCalendar=*:0/1
+Persistent=true
+Unit=2602-money-chatcmd.service
+
+[Install]
+WantedBy=timers.target

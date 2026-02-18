@@ -21,3 +21,23 @@ class TelegramNotifier:
         except Exception:
             # Notification failure must not crash the batch job.
             return
+
+    def get_updates(self, offset: int | None = None, limit: int = 30, timeout: int = 5) -> list[dict]:
+        if not self.token:
+            return []
+        url = f"https://api.telegram.org/bot{self.token}/getUpdates"
+        params: dict[str, object] = {"limit": max(1, min(limit, 100)), "timeout": max(0, min(timeout, 25))}
+        if offset is not None:
+            params["offset"] = int(offset)
+        try:
+            resp = requests.get(url, params=params, timeout=timeout + 5)
+            resp.raise_for_status()
+            obj = resp.json()
+            if not isinstance(obj, dict) or not obj.get("ok"):
+                return []
+            result = obj.get("result")
+            if not isinstance(result, list):
+                return []
+            return [x for x in result if isinstance(x, dict)]
+        except Exception:
+            return []

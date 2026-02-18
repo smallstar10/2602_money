@@ -108,6 +108,12 @@ CREATE TABLE IF NOT EXISTS strategy_experiments (
   objective REAL NOT NULL,
   active INTEGER NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS bot_state (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_ts_kst TEXT NOT NULL
+);
 """
 
 DEFAULT_WEIGHTS_JSON = json.dumps(DEFAULT_WEIGHTS, ensure_ascii=True)

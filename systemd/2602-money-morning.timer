@@ -1,0 +1,10 @@
+[Unit]
+Description=Run 2602_money morning briefing at 08:30 KST
+
+[Timer]
+OnCalendar=*-*-* 08:30:00 Asia/Seoul
+Persistent=true
+Unit=2602-money-morning.service
+
+[Install]
+WantedBy=timers.target

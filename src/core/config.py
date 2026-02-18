@@ -37,6 +37,27 @@ class Settings:
     event_feed_urls: str
     high_impact_dates: str
     strategy_lab_enable: bool
+    command_poll_limit: int
+    briefing_news_count: int
+    briefing_tech_rss_urls: str
+    briefing_major_rss_urls: str
+    ecosystem_hotdeal_db_path: str
+    ecosystem_blog_stats_csv_path: str
+    ecosystem_blog_daily_state_path: str
+    watchdog_enable_external: bool
+    watchdog_stale_hotdeal_min: int
+    watchdog_stale_blog_min: int
+    backup_dir: str
+    backup_retention_days: int
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name, "").strip().lower()
+    if raw in {"1", "true", "yes", "y", "on"}:
+        return True
+    if raw in {"0", "false", "no", "n", "off"}:
+        return False
+    return bool(default)
 
 
 def load_settings() -> Settings:
@@ -74,6 +95,32 @@ def load_settings() -> Settings:
         ),
         high_impact_dates=os.getenv("HIGH_IMPACT_DATES", ""),
         strategy_lab_enable=os.getenv("STRATEGY_LAB_ENABLE", "true").lower() == "true",
+        command_poll_limit=int(os.getenv("COMMAND_POLL_LIMIT", "50")),
+        briefing_news_count=int(os.getenv("BRIEFING_NEWS_COUNT", "10")),
+        briefing_tech_rss_urls=os.getenv(
+            "BRIEFING_TECH_RSS_URLS",
+            "https://news.google.com/rss/search?q=technology&hl=en-US&gl=US&ceid=US:en,"
+            "https://feeds.bbci.co.uk/news/technology/rss.xml",
+        ),
+        briefing_major_rss_urls=os.getenv(
+            "BRIEFING_MAJOR_RSS_URLS",
+            "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en,"
+            "https://feeds.bbci.co.uk/news/world/rss.xml,https://feeds.bbci.co.uk/news/business/rss.xml",
+        ),
+        ecosystem_hotdeal_db_path=os.getenv("ECOSYSTEM_HOTDEAL_DB_PATH", "/home/hyeonbin/hotdeal_bot/data/hotdeal.db"),
+        ecosystem_blog_stats_csv_path=os.getenv(
+            "ECOSYSTEM_BLOG_STATS_CSV_PATH",
+            "/home/hyeonbin/blog_bot/reports/stats.csv",
+        ),
+        ecosystem_blog_daily_state_path=os.getenv(
+            "ECOSYSTEM_BLOG_DAILY_STATE_PATH",
+            "/home/hyeonbin/blog_bot/data/daily_completion_state.json",
+        ),
+        watchdog_enable_external=_env_bool("WATCHDOG_ENABLE_EXTERNAL", True),
+        watchdog_stale_hotdeal_min=int(os.getenv("WATCHDOG_STALE_HOTDEAL_MIN", "180")),
+        watchdog_stale_blog_min=int(os.getenv("WATCHDOG_STALE_BLOG_MIN", "180")),
+        backup_dir=os.getenv("BACKUP_DIR", "data/backups"),
+        backup_retention_days=int(os.getenv("BACKUP_RETENTION_DAYS", "14")),
     )
 
 

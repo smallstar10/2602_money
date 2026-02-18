@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import Counter
 from datetime import datetime
+from typing import Any
 
 import pandas as pd
 
@@ -197,4 +198,80 @@ def format_nightly_message(ts: datetime, stats: dict) -> str:
         f"가상매매 체결(오늘): {stats.get('paper_trades_today', 0)}\n"
         f"전략 실험실: {stats.get('strategy_lab_summary', 'N/A')}\n"
         f"가중치 조정: {stats.get('weight_update', '없음')}"
+    )
+
+
+def _fmt_age(age_min: float | None) -> str:
+    if age_min is None:
+        return "N/A"
+    if age_min < 120:
+        return f"{age_min:.0f}분 전"
+    return f"{age_min / 60.0:.1f}시간 전"
+
+
+def _fmt_dt(dt: datetime | None) -> str:
+    if dt is None:
+        return "N/A"
+    return dt.strftime("%Y-%m-%d %H:%M")
+
+
+def format_ecosystem_status(ts: datetime, eco: dict[str, Any]) -> str:
+    m = eco.get("money", {})
+    h = eco.get("hotdeal", {})
+    b = eco.get("blog", {})
+    return (
+        f"[KST {ts.strftime('%Y-%m-%d %H:%M')}] 통합 상태 대시보드\n"
+        f"[Money_2602]\n"
+        f"- 마지막 실행: {_fmt_dt(m.get('last_run_kst'))} ({_fmt_age(m.get('age_min'))})\n"
+        f"- 타이머: hourly={m.get('hourly_timer')} nightly={m.get('nightly_timer')} watchdog={m.get('watchdog_timer')}\n"
+        f"[Hotdeal]\n"
+        f"- 마지막 트래킹: {_fmt_dt(h.get('last_run_kst'))} ({_fmt_age(h.get('age_min'))})\n"
+        f"- 최근24h 알림: {int(h.get('alerts_24h', 0))}\n"
+        f"- 타이머: tracker={h.get('tracker_timer')} discovery={h.get('discovery_timer')} chat={h.get('chatcmd_timer')}\n"
+        f"[Blog]\n"
+        f"- 마지막 사이클: {_fmt_dt(b.get('last_run_kst'))} ({_fmt_age(b.get('age_min'))})\n"
+        f"- 최근 상태: {b.get('status') or 'N/A'} / fail_code={b.get('fail_code') or '-'}\n"
+        f"- 오늘 성공: {int(b.get('daily_success_count', 0))}회 / service={b.get('service')}"
+    )
+
+
+def format_news_digest(ts: datetime, items: list[Any]) -> str:
+    lines = [f"[KST {ts.strftime('%Y-%m-%d %H:%M')}] Tech + 주요 뉴스"]
+    if not items:
+        lines.append("뉴스 수집 실패(또는 항목 없음)")
+        return "\n".join(lines)
+    for i, it in enumerate(items, start=1):
+        cat = "Tech" if str(getattr(it, "category", "")).upper() == "TECH" else "Major"
+        lines.append(f"{i}) [{cat}] {getattr(it, 'title', '')}")
+        lines.append(f"- {getattr(it, 'url', '')}")
+    return "\n".join(lines)
+
+
+def format_morning_briefing(ts: datetime, eco: dict[str, Any], items: list[Any]) -> str:
+    lines = [
+        f"[KST {ts.strftime('%Y-%m-%d %H:%M')}] 아침 브리핑",
+        "1) 통합 상태",
+    ]
+    lines.append(format_ecosystem_status(ts, eco))
+    lines.append("")
+    lines.append(f"2) 오늘 Tech/주요 뉴스 {len(items)}건")
+    if not items:
+        lines.append("- 뉴스 항목 없음")
+    else:
+        for i, it in enumerate(items, start=1):
+            cat = "Tech" if str(getattr(it, "category", "")).upper() == "TECH" else "Major"
+            lines.append(f"{i}) [{cat}] {getattr(it, 'title', '')}")
+            lines.append(f"- {getattr(it, 'url', '')}")
+    return "\n".join(lines)
+
+
+def format_evening_report(ts: datetime, eco: dict[str, Any], money_summary: dict[str, Any]) -> str:
+    return (
+        f"[KST {ts.strftime('%Y-%m-%d %H:%M')}] 저녁 통합 리포트\n"
+        f"- Money 오늘 실행: {int(money_summary.get('money_runs_today', 0))}회\n"
+        f"- Money 최근 실행: {_fmt_dt(eco.get('money', {}).get('last_run_kst'))}\n"
+        f"- Hotdeal 최근24h 알림: {int(eco.get('hotdeal', {}).get('alerts_24h', 0))}건\n"
+        f"- Blog 오늘 성공: {int(eco.get('blog', {}).get('daily_success_count', 0))}회\n"
+        f"- Money 평균 후보점수(최근): {float(money_summary.get('avg_score_latest', 0.0)):.2f}\n"
+        f"- Money 최근 note: {str(eco.get('money', {}).get('note', ''))[:120]}"
     )
