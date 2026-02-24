@@ -51,12 +51,18 @@ systemctl --user enable --now 2602-money-backup.timer
 
 ## 텔레그램 명령어 (Money_2602_bot)
 - `/상태`: money/hotdeal/blog 통합 상태 대시보드
-- `/뉴스`: Tech + 주요 뉴스 10건(URL 포함)
+- `/뉴스`: Tech + 주요 뉴스 10건(URL 포함, 기본 한국 90%/미국 10%)
 - `/최근`: 최근 스캔 후보 TOP 5
+- `/모의투자`: 현재 모의 보유 포지션/손익/근거 요약
+- `/실전ON`: 자동 주문 토글 ON
+- `/실전OFF`: 자동 주문 토글 OFF
+- `/실전상태`: 실전 주문 토글/제한/최근 계좌 스냅샷 확인
+- `/트레이닝`: 실전 전환 준비도(점수/게이트/권장 리스크 예산/체크리스트)
+- `/트레이닝 로그`: 최근 준비도 리포트 이력
 - `/도움말`
 
 ## 추가 자동화 스케줄
-- `08:30` 아침 브리핑: 통합 상태 + Tech/주요 뉴스 10건
+- `08:30` 아침 브리핑: 통합 상태 + Tech/주요 뉴스 10건(기본 한국 90%/미국 10%)
 - `20:30` 저녁 통합 리포트
 - `03:10` 일일 백업 (money/hotdeal/blog 핵심 파일)
 - `10분 간격` watchdog: money/hotdeal/blog 상태 점검 및 자동 재기동 시도
@@ -116,6 +122,39 @@ systemctl --user enable --now 2602-money-backup.timer
 - 보유 종목 청산 판단은 `top N`만이 아니라 해당 시점 전체 시장상태(`market_state`)를 사용합니다.
 - 섹터회전(`sector_rotation`) 점수를 스코어에 반영해 업종 자금 이동을 추적합니다.
 
+## 트레이닝 봇(실전 전환 준비)
+- 트레이닝은 모의 기록 기반으로 실전 준비도를 산출합니다.
+- 준비도 리포트는 다음을 평가합니다.
+  - 표본 적정성(기간/체결 수)
+  - 누적 수익률/최대 낙폭/일간 승률
+  - 후보 사후성과(outcomes) 승률
+- 리포트는 `training_reports` 테이블에 저장되며, `/트레이닝 로그`로 확인할 수 있습니다.
+- 야간 리포트에 준비도 요약(레벨/점수/권장 리스크 예산)이 포함됩니다.
+- 장중 상태 리포트는 평일 `09:10`, `12:10`, `15:10`에 자동 전송됩니다.
+
+## 실전 자동주문(KIS)
+- `DATA_PROVIDER=kis` 환경에서만 동작합니다.
+- 안전장치:
+  - `LIVE_ENABLE=true` 여야 실전 로직 활성화
+  - 텔레그램 `/실전ON` 상태여야 주문 제출
+  - 일일 주문 수(`LIVE_MAX_TRADES_PER_DAY`), 최대 보유수(`LIVE_MAX_POSITIONS`), 최대 운용자본(`LIVE_MAX_CAPITAL_KRW`) 제한
+  - 점수 임계값(`LIVE_ENTRY_SCORE_THRESHOLD`) 미만 종목은 진입 제외
+  - 계좌 기반 리스크 오버레이: 당일 수익률/계좌 drawdown/현금비중/실패율 기반으로 진입 임계값과 주문 크기 자동 조정
+  - 주문가능수량 조회(`inquire-psbl-order`)를 사용해 종목별 매수 가능 수량/금액 범위 내로 주문
+  - 자금부족 오류(APBK0952) 발생 시 가능한 수량으로 1회 축소 재시도(`LIVE_RETRY_ON_FUND_ERROR=true`)
+- 실전 리스크 파라미터:
+  - `LIVE_CASH_RESERVE_PCT`: 현금 안전버퍼 비율
+  - `LIVE_MAX_ORDER_PCT`: 1회 주문 최대 자산 비중
+  - `LIVE_MIN_ORDER_KRW`: 최소 주문금액
+  - `LIVE_RISK_OFF_DAY_LOSS_PCT`, `LIVE_RISK_OFF_DRAWDOWN_PCT`, `LIVE_RISK_ON_DAY_GAIN_PCT`
+- 주문/계좌 기록:
+  - 계좌 스냅샷: `live_accounts`, `live_positions`
+  - 주문 이력: `live_orders` (submitted/failed)
+- 권장 절차:
+  1. `LIVE_ENABLE=true` + `/실전OFF`로 먼저 상태/스냅샷 확인
+  2. 장중 `/실전상태`로 계좌 연동 점검
+  3. 준비되면 `/실전ON`, 중단은 `/실전OFF`
+
 ## Acceptance 기준
 - `run_hourly.py`: `runs` 1개, `candidates` N개, 텔레그램 전송 1건
 - `run_nightly.py`: `outcomes` 저장 + 야간 요약 전송
@@ -126,7 +165,7 @@ systemctl --user enable --now 2602-money-backup.timer
 cd /home/hyeonbin/2602_money
 ./scripts/install_startup.sh
 ```
-- `hourly`, `nightly`, `watchdog` 타이머를 모두 활성화합니다.
+- `hourly`, `nightly`, `watchdog`, `intraday-status` 등 주요 타이머를 모두 활성화합니다.
 - watchdog은 10분마다 상태를 점검하고 타이머/서비스가 멈추면 자동 재기동합니다.
 
 부팅 후 자동시작 확인:

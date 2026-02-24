@@ -32,6 +32,7 @@ def main() -> int:
             settings.briefing_tech_rss_urls,
             settings.briefing_major_rss_urls,
             top_n=settings.briefing_news_count,
+            kr_ratio=settings.briefing_kr_ratio,
         )
         notifier.send(format_morning_briefing(ts, eco, items))
         logger.info("morning briefing sent: news=%s", len(items))

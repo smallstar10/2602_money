@@ -135,17 +135,49 @@ def _format_event_summary(event_ctx: dict | None) -> list[str]:
     return lines
 
 
+def _format_live_summary(live_summary: dict | None) -> list[str]:
+    if not live_summary:
+        return []
+    if not bool(live_summary.get("enabled")):
+        return []
+    status = str(live_summary.get("status", "N/A"))
+    active = bool(live_summary.get("active", False))
+    cash = _safe_float(live_summary.get("cash", 0.0))
+    asset = _safe_float(live_summary.get("total_asset", 0.0))
+    positions = int(_safe_float(live_summary.get("positions", 0)))
+    submitted = int(_safe_float(live_summary.get("orders_submitted", 0)))
+    failed = int(_safe_float(live_summary.get("orders_failed", 0)))
+    buys = int(_safe_float(live_summary.get("buys", 0)))
+    sells = int(_safe_float(live_summary.get("sells", 0)))
+    threshold = _safe_float(live_summary.get("threshold", 0.0))
+    risk_mode = str(live_summary.get("risk_mode", "normal"))
+    day_ret = _safe_float(live_summary.get("day_return", 0.0))
+    drawdown = _safe_float(live_summary.get("account_drawdown", 0.0))
+    cash_ratio = _safe_float(live_summary.get("cash_ratio", 0.0))
+    fail_rate = _safe_float(live_summary.get("fail_rate_today", 0.0))
+    return [
+        "실전 주문 상태",
+        f"- 모드: {'ON' if active else 'OFF'} / status={status} / 리스크 {risk_mode} / 진입점수 기준 {threshold:.1f}",
+        f"- 계좌 컨디션: 당일 {day_ret:+.2%}, 계좌MDD {drawdown:.2%}, 현금비중 {cash_ratio:.1%}, 실패율 {fail_rate:.1%}",
+        f"- 주문: 제출 {submitted}건(매수 {buys}, 매도 {sells}), 실패 {failed}건",
+        f"- 계좌: 자산 {asset:,.0f}원 / 현금 {cash:,.0f}원 / 보유 {positions}종목",
+        "",
+    ]
+
+
 def format_hourly_message(
     ts: datetime,
     ranked: pd.DataFrame,
     top_n: int,
     sp500: dict | None = None,
     event_ctx: dict | None = None,
+    live_summary: dict | None = None,
 ) -> str:
     header = f"[KST {ts.strftime('%Y-%m-%d %H:00')}] 2602_money 레이더"
     if ranked.empty:
         extra = _format_sp500_summary(sp500)
         extra.extend(_format_event_summary(event_ctx))
+        extra.extend(_format_live_summary(live_summary))
         if not extra:
             return header + "\n후보 없음(필터 통과 종목 없음)"
         return "\n".join([header] + extra + ["후보 없음(필터 통과 종목 없음)"])
@@ -154,6 +186,7 @@ def format_hourly_message(
     lines = [header]
     lines.extend(_format_sp500_summary(sp500))
     lines.extend(_format_event_summary(event_ctx))
+    lines.extend(_format_live_summary(live_summary))
     lines.extend([
         "해석 요약",
         f"- 국면: {_market_phase(top)}",
@@ -185,6 +218,12 @@ def format_hourly_message(
 def format_nightly_message(ts: datetime, stats: dict) -> str:
     factor_top = stats.get("factor_top", "N/A")
     factor_bottom = stats.get("factor_bottom", "N/A")
+    training_level = str(stats.get("training_level", "N/A"))
+    training_score = float(stats.get("training_score", 0.0))
+    training_ready = bool(stats.get("training_ready", False))
+    training_risk = float(stats.get("training_risk_per_trade_pct", 0.0))
+    training_day_loss = float(stats.get("training_daily_loss_limit_pct", 0.0))
+    training_slots = int(stats.get("training_max_new_positions", 0))
     return (
         f"[KST {ts.strftime('%Y-%m-%d %H:%M')}] 2602_money 야간 리포트\n"
         f"평균수익률(1d): {stats.get('avg_ret_1d', 0.0):.3%}\n"
@@ -196,6 +235,8 @@ def format_nightly_message(ts: datetime, stats: dict) -> str:
         f"진입 임계점: {stats.get('entry_score_threshold', 55.0):.1f}, 포지션 스케일: {stats.get('position_scale', 1.0):.2f}\n"
         f"가상매매 NAV: {stats.get('paper_nav', 0.0):,.0f} KRW (일손익 {stats.get('paper_pnl_day', 0.0):+,.0f})\n"
         f"가상매매 체결(오늘): {stats.get('paper_trades_today', 0)}\n"
+        f"실전 트레이닝: {training_level} | score {training_score:.1f}/100 | ready={'YES' if training_ready else 'NO'}\n"
+        f"트레이닝 리스크 예산: 1회 {training_risk:.2f}% / 일손실 {training_day_loss:.2f}% / 신규포지션 {training_slots}개\n"
         f"전략 실험실: {stats.get('strategy_lab_summary', 'N/A')}\n"
         f"가중치 조정: {stats.get('weight_update', '없음')}"
     )
@@ -275,3 +316,54 @@ def format_evening_report(ts: datetime, eco: dict[str, Any], money_summary: dict
         f"- Money 평균 후보점수(최근): {float(money_summary.get('avg_score_latest', 0.0)):.2f}\n"
         f"- Money 최근 note: {str(eco.get('money', {}).get('note', ''))[:120]}"
     )
+
+
+def format_training_report(ts: datetime, report: dict[str, Any]) -> str:
+    metrics = report.get("metrics", {}) if isinstance(report, dict) else {}
+    gates = report.get("gates", []) if isinstance(report, dict) else []
+    rp = report.get("risk_plan", {}) if isinstance(report, dict) else {}
+    checklist = report.get("checklist", []) if isinstance(report, dict) else []
+    lines = [
+        f"[KST {ts.strftime('%Y-%m-%d %H:%M')}] 2602_money 실전 트레이닝",
+        f"- 준비도: {str(report.get('level_text', report.get('level', 'N/A')))} (score {float(report.get('score', 0.0)):.1f}/100)",
+        f"- 실전 진입 판단: {'가능(소액·수동)' if bool(report.get('ready', False)) else '대기(모의·병행)'}",
+        f"- 기간/표본: {int(metrics.get('history_days', 0))}일, 모의체결 {int(metrics.get('order_total', 0))}건",
+        f"- 성과: 누적 {float(metrics.get('cumulative_return', 0.0)):+.2%}, 최대낙폭 {float(metrics.get('max_drawdown', 0.0)):.2%}, 일간승률 {float(metrics.get('daily_win_rate', 0.0)):.1%}",
+        f"- 후행성과(1d): 표본 {int(metrics.get('outcome_n', 0))}, 평균 {float(metrics.get('outcome_avg_ret_1d', 0.0)):+.3%}, 승률 {float(metrics.get('outcome_win_rate_1d', 0.0)):.1%}",
+        f"- 권장 리스크 예산: 1회 {float(rp.get('risk_per_trade_pct', 0.0)):.2f}% / 일손실 {float(rp.get('daily_loss_limit_pct', 0.0)):.2f}% / 신규 {int(rp.get('max_new_positions', 0))}개",
+        "",
+        "게이트 체크",
+    ]
+    for i, g in enumerate(gates, start=1):
+        ok = bool(g.get("pass", False))
+        value = g.get("value")
+        target = g.get("target")
+        if isinstance(value, float) and isinstance(target, float):
+            val_txt = f"{value:.2%} / 기준 {target:.2%}"
+        else:
+            val_txt = f"{value} / 기준 {target}"
+        lines.append(f"{i}) {'PASS' if ok else 'FAIL'} - {g.get('label', '-')}: {val_txt}")
+    if checklist:
+        lines.append("")
+        lines.append("실행 체크리스트")
+        for i, c in enumerate(checklist, start=1):
+            lines.append(f"{i}) {str(c)}")
+    lines.append("")
+    lines.append("※ 본 메시지는 트레이닝/리서치 보조이며 자동 주문을 실행하지 않습니다.")
+    return "\n".join(lines)
+
+
+def format_training_report_log(ts: datetime, reports: list[dict[str, Any]]) -> str:
+    lines = [f"[KST {ts.strftime('%Y-%m-%d %H:%M')}] 트레이닝 리포트 최근 기록"]
+    if not reports:
+        lines.append("- 저장된 트레이닝 리포트가 없습니다.")
+        return "\n".join(lines)
+    for i, r in enumerate(reports, start=1):
+        metrics = r.get("metrics", {})
+        lines.append(
+            f"{i}) {r.get('ts_kst')} | {r.get('mode')} | {r.get('level')} {float(r.get('score', 0.0)):.1f}/100 | ready={'Y' if r.get('ready') else 'N'}"
+        )
+        lines.append(
+            f"- 누적 {float(metrics.get('cumulative_return', 0.0)):+.2%}, MDD {float(metrics.get('max_drawdown', 0.0)):.2%}, 체결 {int(metrics.get('order_total', 0))}건"
+        )
+    return "\n".join(lines)

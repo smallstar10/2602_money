@@ -1,0 +1,12 @@
+[Unit]
+Description=Run 2602_money intraday status at 09:10/12:10/15:10 KST
+
+[Timer]
+OnCalendar=Mon..Fri *-*-* 09:10:00 Asia/Seoul
+OnCalendar=Mon..Fri *-*-* 12:10:00 Asia/Seoul
+OnCalendar=Mon..Fri *-*-* 15:10:00 Asia/Seoul
+Persistent=true
+Unit=2602-money-intraday-status.service
+
+[Install]
+WantedBy=timers.target

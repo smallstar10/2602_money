@@ -82,6 +82,41 @@ CREATE TABLE IF NOT EXISTS paper_orders (
   run_id INTEGER
 );
 
+CREATE TABLE IF NOT EXISTS live_accounts (
+  snap_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts_kst TEXT NOT NULL,
+  cash REAL NOT NULL,
+  total_eval REAL NOT NULL,
+  total_asset REAL NOT NULL,
+  note TEXT
+);
+
+CREATE TABLE IF NOT EXISTS live_positions (
+  ticker TEXT PRIMARY KEY,
+  name TEXT,
+  qty INTEGER NOT NULL,
+  avg_price REAL NOT NULL,
+  last_price REAL NOT NULL,
+  eval_amount REAL NOT NULL,
+  pnl_amount REAL NOT NULL,
+  pnl_pct REAL NOT NULL,
+  updated_ts_kst TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS live_orders (
+  order_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts_kst TEXT NOT NULL,
+  side TEXT NOT NULL,
+  ticker TEXT NOT NULL,
+  name TEXT,
+  qty INTEGER NOT NULL,
+  price REAL NOT NULL,
+  order_no TEXT,
+  status TEXT NOT NULL,
+  reason TEXT,
+  run_id INTEGER
+);
+
 CREATE TABLE IF NOT EXISTS price_snapshots (
   run_id INTEGER NOT NULL,
   ts_kst TEXT NOT NULL,
@@ -113,6 +148,18 @@ CREATE TABLE IF NOT EXISTS bot_state (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL,
   updated_ts_kst TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS training_reports (
+  report_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  ts_kst TEXT NOT NULL,
+  mode TEXT NOT NULL,
+  score REAL NOT NULL,
+  level TEXT NOT NULL,
+  ready INTEGER NOT NULL,
+  metrics_json TEXT NOT NULL,
+  checklist_json TEXT NOT NULL,
+  note TEXT
 );
 """
 

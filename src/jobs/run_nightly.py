@@ -18,6 +18,7 @@ from src.feedback.rebalance import update_strategy_state
 from src.feedback.weight_tuner import tune_weights
 from src.notify.formatters import format_nightly_message
 from src.notify.telegram_notify import TelegramNotifier
+from src.paper.training_coach import build_training_report, save_training_report
 from src.research.strategy_lab import latest_strategy_lab, run_strategy_lab
 from src.scoring.weights import load_active_weights
 
@@ -47,6 +48,26 @@ def main() -> int:
         stats["regime_update"] = strategy_update
         stats["entry_score_threshold"] = strategy["entry_score_threshold"]
         stats["position_scale"] = strategy["position_scale"]
+        training = build_training_report(
+            settings.sqlite_path,
+            lookback_days=settings.training_lookback_days,
+            min_days=settings.training_min_days,
+            min_trades=settings.training_min_trades,
+            target_return=settings.training_target_return,
+            max_drawdown_limit=settings.training_max_drawdown,
+            base_risk_per_trade_pct=settings.training_base_risk_per_trade_pct,
+            base_daily_loss_pct=settings.training_base_daily_loss_limit_pct,
+            base_max_new_positions=settings.training_base_max_new_positions,
+            now=now_kst(),
+        )
+        save_training_report(settings.sqlite_path, training, mode="nightly", note="nightly-summary")
+        rp = training.get("risk_plan", {})
+        stats["training_level"] = str(training.get("level_text", training.get("level", "N/A")))
+        stats["training_score"] = float(training.get("score", 0.0))
+        stats["training_ready"] = bool(training.get("ready", False))
+        stats["training_risk_per_trade_pct"] = float(rp.get("risk_per_trade_pct", 0.0))
+        stats["training_daily_loss_limit_pct"] = float(rp.get("daily_loss_limit_pct", 0.0))
+        stats["training_max_new_positions"] = int(rp.get("max_new_positions", 0))
         stats["weight_update"] = status
         msg = format_nightly_message(now_kst(), stats)
         notifier.send(msg)

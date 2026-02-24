@@ -146,7 +146,10 @@ def collect_ecosystem_status(settings) -> dict[str, Any]:
             "fail_code": str(blog_last.get("fail_code", "")) if blog_last else "",
             "daily_success_count": int(blog_daily.get("success_count", 0)) if blog_daily else 0,
             "daily_target_sent": bool(blog_daily.get("target_sent", False)) if blog_daily else False,
-            "service": _unit_state("260213-blog.service", user_mode=False),
+            "service": _unit_state(
+                settings.ecosystem_blog_service_unit,
+                user_mode=bool(settings.ecosystem_blog_service_user_mode),
+            ),
         },
     }
     return status

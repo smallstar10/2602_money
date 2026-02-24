@@ -21,6 +21,7 @@ from src.analysis.llm_analyst import build_analyst_note
 from src.features.feature_engine import build_features
 from src.feedback.rebalance import load_strategy_state
 from src.events.news_risk import build_event_context
+from src.live import execute_live_trading
 from src.market.us_index import fetch_sp500_snapshot
 from src.notify.formatters import format_hourly_message
 from src.notify.telegram_notify import TelegramNotifier
@@ -122,6 +123,7 @@ def main() -> int:
 
         if feats.empty:
             paper_note = ""
+            live_summary = None
             if settings.paper_enable:
                 paper = run_paper_trading(
                     sqlite_path=settings.sqlite_path,
@@ -138,12 +140,36 @@ def main() -> int:
                     slippage_bps=settings.paper_slippage_bps,
                 )
                 paper_note = f" paper_orders={paper['orders']} nav={paper['nav']}"
+            if settings.live_enable:
+                live_summary = execute_live_trading(
+                    settings=settings,
+                    provider=provider,
+                    run_id=run_id,
+                    ts_kst=now,
+                    ranked_entries=pd.DataFrame(),
+                    market_state=pd.DataFrame(),
+                    strategy_entry_threshold=float(strategy_state["entry_score_threshold"]),
+                )
+                paper_note += (
+                    f" live={live_summary.get('status')}"
+                    f" live_sub={int(live_summary.get('orders_submitted', 0))}"
+                    f" live_fail={int(live_summary.get('orders_failed', 0))}"
+                )
             db.execute(
                 settings.sqlite_path,
                 "UPDATE runs SET note=? WHERE run_id=?",
                 (f"hourly-scan:no-feature-data{paper_note}", run_id),
             )
-            notifier.send(format_hourly_message(now, feats, settings.top_n, sp500=sp500, event_ctx=event_ctx))
+            notifier.send(
+                format_hourly_message(
+                    now,
+                    feats,
+                    settings.top_n,
+                    sp500=sp500,
+                    event_ctx=event_ctx,
+                    live_summary=live_summary,
+                )
+            )
             logger.info("hourly run done: run_id=%s candidates=0 (no feature data)", run_id)
             return 0
 
@@ -187,13 +213,37 @@ def main() -> int:
             )
             note_parts.append(f"paper_orders={paper['orders']} nav={paper['nav']}")
 
+        live_summary = None
+        if settings.live_enable:
+            live_summary = execute_live_trading(
+                settings=settings,
+                provider=provider,
+                run_id=run_id,
+                ts_kst=now,
+                ranked_entries=ranked.head(settings.top_n).copy(),
+                market_state=market_state.copy(),
+                strategy_entry_threshold=float(strategy_state["entry_score_threshold"]),
+            )
+            note_parts.append(
+                f"live={live_summary.get('status')}"
+                f" live_sub={int(live_summary.get('orders_submitted', 0))}"
+                f" live_fail={int(live_summary.get('orders_failed', 0))}"
+            )
+
         db.execute(
             settings.sqlite_path,
             "UPDATE runs SET note=? WHERE run_id=?",
             (" ".join(note_parts), run_id),
         )
 
-        message = format_hourly_message(now, ranked, settings.top_n, sp500=sp500, event_ctx=event_ctx)
+        message = format_hourly_message(
+            now,
+            ranked,
+            settings.top_n,
+            sp500=sp500,
+            event_ctx=event_ctx,
+            live_summary=live_summary,
+        )
         notifier.send(message)
         logger.info("hourly run done: run_id=%s candidates=%s", run_id, len(rows))
         return 0
